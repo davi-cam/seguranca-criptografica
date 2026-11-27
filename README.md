@@ -1,6 +1,6 @@
 CrypSafe
 
-CrypSafe é uma ferramenta de linha de comando para calcular e comparar hashes SHA-256 e assinar arquivos com Ed25519.
+CrypSafe é uma ferramenta de linha de comando para calcular e comparar hashes SHA-256 e assinar arquivos com Ed25519. (nome qualquer q eu botei kk)
 
 Integrantes: Davi Camargo e Ester Lohana.
 
