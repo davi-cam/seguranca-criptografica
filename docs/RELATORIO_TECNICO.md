@@ -1,47 +1,42 @@
-# CrypSafe — Relatório técnico
+CrypSafe - Relatório técnico
 
-## Identificação
+Integrantes: Davi Camargo e Ester Lohana
+Turma: oitavo período
+Linguagem: Python
+Repositório: https://github.com/davi-cam/seguranca-criptografia
 
-**Integrantes:** Davi Camargo e Ester Lohana  
-**Turma:** oitavo período  
-**Linguagem:** Python  
-**Repositório:** [davi-cam/seguranca-criptografia](https://github.com/davi-cam/seguranca-criptografia)
+Como a ferramenta funciona
 
-## Solução e funcionalidades
+O programa fica em cryptosafe.py e lê os arquivos em modo binário. Usa hashlib, que vem com o Python, para calcular o SHA-256. Para gerar chaves e lidar com assinaturas, usa cryptography, com a versão definida em requirements.txt. A declaração fictícia está em exemplos/declaracao.txt e os testes ficam em tests/.
 
-A CLI em `cryptosafe.py` recebe os caminhos na ordem definida pelo enunciado. Usa a biblioteca padrão `hashlib` para SHA-256 e a biblioteca `cryptography`, com versão fixada em `requirements.txt`, para Ed25519. Os arquivos são lidos em modo binário. A declaração fictícia está em `exemplos/` e os testes em `tests/`.
+O comando keygen gera um par Ed25519. A chave privada fica em PEM PKCS#8 sem senha e a pública em PEM SubjectPublicKeyInfo (R01). O comando hash mostra o SHA-256 em 64 caracteres hexadecimais minúsculos (R02). O check compara esse valor com a referência informada (R03).
 
-| Requisito | Implementação |
-| --- | --- |
-| R01 | `keygen` gera chaves Ed25519. A chave privada é gravada em PEM PKCS#8 sem senha e a pública em PEM SubjectPublicKeyInfo. |
-| R02 | `hash` imprime o SHA-256 do arquivo em 64 caracteres hexadecimais minúsculos. |
-| R03 | `check` valida e compara a referência com o valor calculado. |
-| R04 | `sign` aplica Ed25519 diretamente aos bytes do arquivo e grava os 64 bytes da assinatura. |
-| R05 | `verify` confere a assinatura com a chave pública e informa o resultado. |
-| R06 | Documento alterado, chave pública diferente e assinaturas de tamanho incorreto geram rejeição. |
+O sign usa a chave privada para assinar os bytes originais do arquivo, sem pré-hash, e grava uma assinatura binária de 64 bytes (R04). O verify usa a chave pública para verificar a assinatura (R05). Se o documento for alterado, a chave pública for diferente ou a assinatura for inválida, a verificação falha (R06). Os comandos check e verify retornam 0 para sucesso, 1 para divergência ou assinatura inválida e 2 para erros de uso ou acesso.
 
-`check` e `verify` usam os códigos `0` para validação bem-sucedida, `1` para divergência ou assinatura inválida e `2` para erros de uso ou acesso.
+Testes
 
-## Testes realizados
+Os nove testes passaram em Python 3.13 no Windows. Os métodos abaixo ficam em tests/test_cryptosafe.py.
 
-Os nove testes passaram em Python 3.13 no Windows. A coluna de evidência indica o método em [`tests/test_cryptosafe.py`](../tests/test_cryptosafe.py).
+```
+ID    Resultado observado               Evidência (método)
+TI01  Hash igual ao valor conhecido     test_ti01_hash_conhecido
+TI02  Mudança detectada pelo hash       test_ti02_hash_diverge_apos_alteracao
+TI03  PEMs válidos e chaves do par      test_ti03_par_de_chaves_pem
+TI04  Assinatura de 64 bytes válida     test_ti04_assinatura_do_arquivo_original
+TI05  Documento alterado rejeitado      test_ti05_arquivo_alterado
+TI06  Outra chave pública rejeitada     test_ti06_outra_chave_publica
+```
 
-| ID | Resultado observado | Evidência |
-| --- | --- | --- |
-| TI01 | SHA-256 igual ao valor conhecido. | `test_ti01_hash_conhecido` |
-| TI02 | Alteração detectada na comparação do hash. | `test_ti02_hash_diverge_apos_alteracao` |
-| TI03 | PEMs válidos e chaves correspondentes. | `test_ti03_par_de_chaves_pem` |
-| TI04 | Assinatura de 64 bytes válida para o original. | `test_ti04_assinatura_do_arquivo_original` |
-| TI05 | Verificação rejeitou o documento alterado. | `test_ti05_arquivo_alterado` |
-| TI06 | Verificação rejeitou outra chave pública. | `test_ti06_outra_chave_publica` |
+Os outros três testes cobrem arquivo inexistente, chave de tipo incompatível e assinatura com tamanho inválido.
 
-Os três testes adicionais cobrem arquivo inexistente, chave incompatível e assinatura com tamanho inválido.
+Análise e conclusão
 
-## Análise e conclusão
+Qualquer pessoa com acesso ao arquivo consegue calcular seu SHA-256. O hash ajuda a detectar mudanças quando comparado com uma referência confiável. Por si só, ele não comprova quem criou o arquivo.
 
-1. **SHA-256 e autoria.** Qualquer pessoa com acesso ao documento pode calcular seu hash. A comparação com uma referência confiável verifica integridade, mas não identifica quem produziu o arquivo.
-2. **Papel das chaves.** A chave privada gera a assinatura e deve permanecer sob controle do titular. A pública permite verificar a assinatura. Associar a assinatura a uma pessoa ou instituição exige uma associação confiável entre a chave pública e essa identidade.
-3. **Alteração do documento.** O Ed25519 verifica a assinatura em função dos bytes recebidos. Se o documento for alterado, os bytes apresentados deixam de corresponder à assinatura original.
-4. **Uso em produção.** Seria necessário proteger as chaves privadas com armazenamento seguro e controle de acesso, autenticar a distribuição das chaves públicas e prever rotação, revogação e auditoria. A solução didática armazena a chave privada sem senha e lê o documento inteiro na assinatura e na verificação, o que limita o uso com arquivos grandes.
+A chave privada é usada para assinar e deve ficar sob controle do titular. A pública é usada para verificar. Para identificar o assinante, é preciso saber de forma confiável a quem pertence a chave pública.
 
-Os testes demonstram que o CrypSafe valida a integridade e a assinatura de arquivos nos cenários previstos na atividade.
+A assinatura é calculada para os bytes originais. Se o documento mudar, os bytes usados na verificação já não correspondem à assinatura gravada.
+
+Para uso em produção, seria preciso proteger o acesso à chave privada, distribuir as chaves públicas por um canal autenticado e prever rotação, revogação e auditoria. Nesta versão, a chave privada é gravada sem senha. A assinatura e a verificação também leem o arquivo inteiro em memória, o que limita o uso com arquivos grandes.
+
+Os testes confirmaram que a ferramenta detecta alterações e valida assinaturas nos casos da atividade.

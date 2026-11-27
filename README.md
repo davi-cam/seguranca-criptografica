@@ -1,14 +1,14 @@
-# CrypSafe
+CrypSafe
 
-CrypSafe é uma ferramenta de linha de comando para verificar a integridade e a assinatura digital de arquivos. A declaração acadêmica fictícia em [`exemplos/declaracao.txt`](exemplos/declaracao.txt) permite experimentar os comandos sem usar dados pessoais reais.
+CrypSafe é uma ferramenta de linha de comando para calcular e comparar hashes SHA-256 e assinar arquivos com Ed25519.
 
-**Integrantes:** Davi Camargo e Ester Lohana.
+Integrantes: Davi Camargo e Ester Lohana.
 
-## Instalação
+Instalação
 
-Use Python 3.11 ou superior com `pip`. Abra o terminal na pasta que contém `cryptosafe.py` e `requirements.txt`. No Bash, use `python3` para criar o ambiente. Em algumas distribuições Linux, é necessário instalar o suporte a `venv` da própria distribuição.
+Na pasta do projeto, use Python 3.11 ou superior com pip e venv.
 
-### PowerShell
+PowerShell
 
 ```powershell
 python -m venv .venv
@@ -16,7 +16,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe cryptosafe.py --help
 ```
 
-### Bash (Linux ou macOS)
+Bash (Linux ou macOS)
 
 ```bash
 python3 -m venv .venv
@@ -24,25 +24,25 @@ python3 -m venv .venv
 ./.venv/bin/python cryptosafe.py --help
 ```
 
-## Comandos
+Comandos
 
-Execute os subcomandos abaixo com o Python do ambiente, como nos exemplos. Coloque entre aspas os caminhos que contêm espaços.
+Execute cryptosafe.py com o Python do ambiente, seguido do subcomando e dos argumentos na ordem abaixo. Use aspas em caminhos com espaços.
 
-| Subcomando e argumentos | Resultado |
-| --- | --- |
-| `keygen CHAVE_PRIVADA CHAVE_PUBLICA` | Gera um par Ed25519 e grava as duas chaves. |
-| `hash ARQUIVO` | Exibe somente o SHA-256 em hexadecimal minúsculo. |
-| `check ARQUIVO HASH_REFERENCIA` | Informa se o SHA-256 corresponde à referência de 64 caracteres hexadecimais minúsculos. |
-| `sign ARQUIVO CHAVE_PRIVADA ASSINATURA` | Assina o arquivo e grava a assinatura no caminho indicado. |
-| `verify ARQUIVO CHAVE_PUBLICA ASSINATURA` | Informa se a assinatura é válida para o arquivo e a chave fornecidos. |
+- keygen CHAVE_PRIVADA CHAVE_PUBLICA. Gera chaves Ed25519 em PEM: privada PKCS#8 sem senha e pública SubjectPublicKeyInfo. (R01)
+- hash ARQUIVO. Exibe o SHA-256 em 64 caracteres hexadecimais minúsculos. (R02)
+- check ARQUIVO HASH_REFERENCIA. Compara o SHA-256 com uma referência no mesmo formato. (R03)
+- sign ARQUIVO CHAVE_PRIVADA ASSINATURA. Assina os bytes originais com Ed25519, sem pré-hash, e grava uma assinatura binária de 64 bytes. (R04)
+- verify ARQUIVO CHAVE_PUBLICA ASSINATURA. Usa a chave pública para validar a assinatura, rejeitando arquivos alterados e assinaturas inválidas. (R05, R06)
 
-Os códigos de saída são `0` para sucesso, `1` para hash divergente ou assinatura inválida e `2` para erro de uso ou de operação, como arquivo inexistente, chave incompatível ou hash de referência malformado. As mensagens de erro de código `2` são enviadas à saída de erro. O `keygen` e o `sign` exigem caminhos de saída novos. As chaves privadas geradas ficam em PEM PKCS#8 sem senha e devem permanecer fora do repositório.
+O programa lê os arquivos em modo binário. Usa hashlib para SHA-256 e cryptography para Ed25519, com a versão fixada em requirements.txt. keygen e sign exigem caminhos de saída novos. Guarde as chaves privadas fora do repositório.
 
-## Demonstração
+Códigos de saída: 0 para sucesso, 1 para hash divergente ou assinatura inválida e 2 para erro, como caminho inválido, arquivo inexistente, chave incompatível ou referência malformada.
 
-Os dois exemplos calculam o hash da declaração, conferem o valor, geram as chaves, assinam e verificam o arquivo. Depois acrescentam texto a uma cópia e repetem as verificações. É esperado que tanto o hash quanto a assinatura falhem na cópia e que o código de saída seja `1` em ambos os casos.
+Demonstração
 
-### PowerShell
+Os exemplos usam a declaração fictícia em exemplos/declaracao.txt. Após a alteração da cópia, check e verify devem retornar 1.
+
+PowerShell
 
 ```powershell
 $python = '.\.venv\Scripts\python.exe'
@@ -70,7 +70,7 @@ $LASTEXITCODE
 $LASTEXITCODE
 ```
 
-### Bash
+Bash
 
 ```bash
 python=./.venv/bin/python
@@ -90,28 +90,7 @@ printf '\n%s\n' 'Texto acrescentado depois da assinatura.' >> "$demo/declaracao-
 "$python" cryptosafe.py verify "$demo/declaracao-alterada.txt" "$demo/publica.pem" "$demo/declaracao.sig" || printf 'Código: %s\n' "$?"
 ```
 
-## Como funciona
-
-**Integridade com SHA-256.** `hash` e `check` abrem o arquivo em modo binário e usam `hashlib.file_digest` para calcular o SHA-256 sem carregar todo o conteúdo de uma vez. O resultado tem 256 bits e é exibido como 64 dígitos hexadecimais minúsculos. `check` valida o formato da referência e compara os dois valores. Uma referência obtida por um canal confiável permite detectar alterações. Qualquer pessoa pode calcular o hash do arquivo, por isso o valor sozinho não comprova autoria. [Documentação do `hashlib`](https://docs.python.org/3.11/library/hashlib.html#hashlib.file_digest)
-
-**Geração de chaves.** A biblioteca `cryptography` gera a chave privada Ed25519 e deriva a chave pública correspondente. A chave privada é armazenada em PEM PKCS#8 e serve para assinar. A chave pública é armazenada em PEM SubjectPublicKeyInfo e pode ser distribuída para verificação. A identidade do assinante depende de obter essa chave pública de uma fonte confiável. [Documentação de serialização](https://cryptography.io/en/48.0.0/hazmat/primitives/asymmetric/serialization/)
-
-**Assinatura e verificação.** `sign` passa os bytes originais do documento ao Ed25519, sem calcular um pré-hash na aplicação, e grava exatamente os 64 bytes retornados pela biblioteca. `verify` confere o tamanho da assinatura e verifica os bytes do documento com a chave pública. Mudanças de conteúdo, codificação ou finais de linha alteram os bytes e invalidam a assinatura. A extensão do arquivo pode ser qualquer uma. As duas operações leem o documento inteiro em memória. [Documentação de Ed25519](https://cryptography.io/en/48.0.0/hazmat/primitives/asymmetric/ed25519/)
-
-## Como os requisitos foram atendidos
-
-| ID | Implementação | Verificação automatizada |
-| --- | --- | --- |
-| R01 | `keygen` gera o par Ed25519 e grava os dois arquivos PEM nos formatos exigidos. | TI03 carrega os PEMs, verifica os tipos e confirma que as chaves correspondem. |
-| R02 | `hash` calcula o SHA-256 a partir dos bytes do arquivo. | TI01 compara o resultado com o SHA-256 conhecido de `abc`. |
-| R03 | `check` compara o hash calculado com o valor de referência. | TI02 confere o original e exige código `1` após alteração. |
-| R04 | `sign` usa a chave privada para assinar o conteúdo original e grava a assinatura binária. | TI04 mede os 64 bytes e verifica a assinatura diretamente sobre o conteúdo com a biblioteca. |
-| R05 | `verify` usa a chave pública correspondente e retorna `0` se a assinatura for válida. | TI04 confirma a mensagem e o código de sucesso da CLI. |
-| R06 | `verify` retorna `1` se a assinatura não corresponder ao documento ou à chave pública. | TI05 altera o documento e TI06 troca a chave pública. Ambos exigem código `1`. |
-
-Os testes também exercitam arquivo inexistente, assinatura com tamanho inválido e chave de algoritmo incompatível. A ordem dos argumentos e os formatos compartilhados seguem o contrato de interoperabilidade da atividade.
-
-## Executar os testes
+Testes
 
 No PowerShell:
 
@@ -125,4 +104,4 @@ No Bash:
 ./.venv/bin/python -m unittest discover -s tests -v
 ```
 
-A suíte usa arquivos temporários e chaves geradas durante a execução. O [relatório técnico](docs/RELATORIO_TECNICO.md) resume as decisões, os resultados e as limitações do projeto.
+A suíte cobre os seis testes obrigatórios (TI01 a TI06) e três casos de erro. Consulte o relatório técnico em docs/RELATORIO_TECNICO.md para ver os resultados, as evidências e as limitações.
